@@ -1,0 +1,9 @@
+* add wildcard expansion
+* figure out why Exec doesn't work
+* add cd, make pure 'ls' work
+* add cat command
+* add some more joystick control
+* figure out where the gp2x specific API is hiding or if there even is one
+* make mouse set the cursor to the given position
+
+# EOF #

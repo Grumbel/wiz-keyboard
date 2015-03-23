@@ -1,4 +1,4 @@
-#include <vector>
+//#include <vector>
 #include <assert.h>
 #include <iostream>
 #include <string>
@@ -6,7 +6,11 @@
 #include <SDL_image.h>
 #include <SDL_tty.h>
 #include <unistd.h>
-//#include "exec.hpp"
+#include <sys/types.h>
+#include <errno.h>
+#include <dirent.h>
+#include "exec.hpp"
+#include "wiz.h"
 #include "fontc64.h"
 
 /*
@@ -14,7 +18,7 @@ SDLKey matrix[] = {
   SDLK_ESCAPE,   SDLK_ESCAPE,   SDLK_F1,    SDLK_F2,    SDLK_F3,    SDLK_F4,    SDLK_F5,    SDLK_F6,    SDLK_F7,    SDLK_F8,    SDLK_F9,     SDLK_F10,       SDLK_F11,         SDLK_F12,          SDLK_BACKSPACE, SDLK_BACKSPACE,
   SDLK_TAB,      SDLK_TAB,      SDLK_1,      SDLK_2,    SDLK_3,     SDLK_4,     SDLK_5,     SDLK_6,     SDLK_7,     SDLK_8,     SDLK_9,      SDLK_0,         SDLK_MINUS,       SDLK_EQUALS,       SDLK_RETURN,    SDLK_RETURN,
   SDLK_TAB,      SDLK_TAB,      SDLK_q,      SDLK_w,    SDLK_e,     SDLK_r,     SDLK_t,     SDLK_y,     SDLK_u,     SDLK_i,     SDLK_o,      SDLK_p,         SDLK_LEFTBRACKET, SDLK_RIGHTBRACKET, SDLK_RETURN,    SDLK_RETURN,
-  SDLK_CAPSLOCK, SDLK_CAPSLOCK, SDLK_a,      SDLK_s,    SDLK_d,     SDLK_f,     SDLK_g,     SDLK_h,     SDLK_j,     SDLK_k,     SDLK_l,      SDLK_SEMICOLON, SDLK_ASTERISK,    SDLK_UNKNOWN,      SDLK_UNKNOWN,   SDLK_UNKNOWN, 
+  SDLK_CAPSLOCK, SDLK_CAPSLOCK, SDLK_a,      SDLK_s,    SDLK_d,     SDLK_f,     SDLK_g,     SDLK_h,     SDLK_j,     SDLK_k,     SDLK_l,      SDLK_SEMICOLON, SDLK_ASTERISK,    SDLK_UNKNOWN,      SDLK_UNKNOWN,   SDLK_UNKNOWN,
   SDLK_LSHIFT,   SDLK_LSHIFT,   SDLK_z,      SDLK_x,    SDLK_c,     SDLK_v,     SDLK_b,     SDLK_n,     SDLK_m,     SDLK_COMMA, SDLK_PERIOD, SDLK_SLASH,     SDLK_BACKSLASH,   SDLK_UNKNOWN,      SDLK_UP,        SDLK_UNKNOWN,
   SDLK_LCTRL,    SDLK_LCTRL,    SDLK_LALT,   SDLK_LALT, SDLK_SPACE, SDLK_SPACE, SDLK_SPACE, SDLK_SPACE, SDLK_SPACE, SDLK_SPACE, SDLK_SPACE,  SDLK_RALT,      SDLK_RALT,        SDLK_LEFT,         SDLK_DOWN,      SDLK_RIGHT
 };
@@ -104,34 +108,129 @@ SDL_Surface* load_surface(const std::string& name)
   return res;
 }
 
-void eval(const std::vector<std::string>& tokens)
+void eval(TTY* tty, const std::vector<std::string>& tokens)
 {
-  std::string cmd = tokens.front();
+  if (0)
+    {
+      // FIXME: Linking with exec.cpp causes the app to not start on WIZ
+      /*
+        Exec exec(tokens.front());
+        for(std::vector<std::string>::const_iterator i = tokens.begin()+1; i != tokens.end(); ++i)
+        {
+        exec.arg(*i);
+        }
 
-  if (cmd == "cd")
-    {
-      
+        exec.exec();
+
+        TTY_print(tty, std::string(exec.get_stdout().begin(), exec.get_stdout().end()).c_str());
+        TTY_print(tty, std::string(exec.get_stderr().begin(), exec.get_stderr().end()).c_str());
+      */
     }
-  else if (cmd == "ls")
+  else
     {
-      
+      std::string cmd = tokens.front();
+
+      if (cmd == "echo")
+        {
+          for(std::vector<std::string>::const_iterator i = tokens.begin()+1; i != tokens.end(); ++i)
+            {
+              TTY_print(tty, i->c_str());
+
+              if (i != tokens.end()-1)
+                TTY_putchar(tty, ' ');
+            }
+        }
+      else if (cmd == "cat")
+        {
+          for(std::vector<std::string>::const_iterator i = tokens.begin()+1; i != tokens.end(); ++i)
+            {
+              FILE* in = fopen(i->c_str(), "r");
+              if (!in)
+                {
+                  TTY_printf(tty, "Error: %s: %s\n", i->c_str(), strerror(errno));
+                }
+              else
+                {
+                  char buffer[4096];
+                  int  len;
+                  while((len = fread(buffer, sizeof(char), 4096, in)) > 0)
+                    {
+                      TTY_write(tty, buffer, len);
+                    }
+                  fclose(in);
+                }
+            }
+        }
+      else if (cmd == "ls")
+        {
+          if (tokens.size() != 2)
+            {
+              TTY_print(tty, "Usage: ls DIRECTORY\n");
+            }
+          else
+            {
+              DIR* dir = opendir(tokens[1].c_str());
+              if (!dir)
+                {
+                  TTY_printf(tty, "Error: %s\n", strerror(errno));
+                }
+              else
+                {
+                  struct dirent* dp;
+
+                  while((dp = readdir(dir)))
+                    {
+                      if (strcmp(dp->d_name, ".") != 0 &&
+                          strcmp(dp->d_name, "..") != 0)
+                        {
+                          int cx, cy;
+                          TTY_GetCursor(tty, &cx, &cy);
+                          if (cx + (int)strlen(dp->d_name) + 1 > tty->width)
+                            {
+                              TTY_print(tty, "\n");
+                            }
+                          TTY_printf(tty, "%s ", dp->d_name);
+                        }
+                    }
+
+                  closedir(dir);
+                  TTY_print(tty, "\n");
+                }
+            }
+        }
+      else if (cmd == "help")
+        {
+          TTY_print(tty, "Available commands:\n");
+          TTY_print(tty, "  ls cat help\n");
+        }
+      else
+        {
+          TTY_print(tty, "Unknown command\n");
+        }
     }
 }
 
 int main()
 {
-  if (SDL_Init(SDL_INIT_VIDEO) < 0 ) 
+  if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK) < 0 )
     {
       return 1;
     }
-  
   atexit(SDL_Quit);
-  
+
   SDL_Surface* screen;
-  if (!(screen = SDL_SetVideoMode(320, 240, 0, SDL_HWSURFACE|SDL_DOUBLEBUF)))
+  if (!(screen = SDL_SetVideoMode(320, 240, 0, SDL_HWSURFACE)))
     {
       return 1;
     }
+
+  int num_joys = SDL_NumJoysticks();
+  for(int i = 0; i < num_joys; ++i)
+    SDL_JoystickOpen(i);
+
+#ifdef GP2X
+  SDL_ShowCursor(SDL_DISABLE);
+#endif
 
   SDL_Surface* keyboard_normal = load_surface("keyboard_normal.png");
   SDL_Surface* keyboard_shift  = load_surface("keyboard_shift.png");
@@ -146,14 +245,15 @@ int main()
   TTY_EnableVisibleCursor(tty, 1);
 
   bool quit = false;
-  bool mouse_down = false;
+  bool mouse_on_terminal = false;
+  bool mouse_on_keyboard = false;
   int  mouse_x = 0;
   int  mouse_y = 0;
   bool shifted = false;
-  while(!quit) 
+  while(!quit)
     {
       SDL_Event event;
-      while(SDL_PollEvent(&event)) 
+      while(SDL_PollEvent(&event))
         {
           switch(event.type)
             {
@@ -162,144 +262,199 @@ int main()
                 break;
 
               case SDL_KEYDOWN:
-                TTY_printf(tty, "KeyDown: %3d '%s'\n", 
+                TTY_printf(tty, "KeyDown: %3d '%s'\n",
                            (int)event.key.keysym.sym, SDL_GetKeyName(event.key.keysym.sym));
                 break;
 
               case SDL_KEYUP:
-                TTY_printf(tty, "KeyUp:   %3d '%s'\n", 
+                TTY_printf(tty, "KeyUp:   %3d '%s'\n",
                            (int)event.key.keysym.sym, SDL_GetKeyName(event.key.keysym.sym));
                 break;
 
               case SDL_MOUSEBUTTONUP:
                 //TTY_printf(tty, "MouseButtonUp:   %d - %dx%d\n",
                 //           event.button.button, event.button.x, event.button.y);
-                mouse_down = false;
+                mouse_on_keyboard = false;
+                mouse_on_terminal = false;
+
                 mouse_x = event.button.x;
                 mouse_y = event.button.y;
                 break;
 
               case SDL_MOUSEBUTTONDOWN:
-                //TTY_printf(tty, "MouseButtonDown: %d - %dx%d\n", 
+                //TTY_printf(tty, "MouseButtonDown: %d - %dx%d\n",
                 //           event.button.button, event.button.x, event.button.y);
-                mouse_down = true;
                 mouse_x = event.button.x;
                 mouse_y = event.button.y;
 
-                {
-                  int key = shifted ? matrix_shift[(mouse_x/20) + ((mouse_y - 120)/20) * 16] :
-                    matrix[(mouse_x/20) + ((mouse_y - 120)/20) * 16];
-                  //TTY_printf(tty, "Key: %s\n", SDL_GetKeyName(key));
-                  if (key < 256)
-                    {
-                      TTY_putchar(tty, (char)key);
-                    }
-                  else
-                    {
-                      switch(key)
-                        {
-                          case K_SHIFT:
-                            shifted = !shifted;
-                            break;
+                if (mouse_y < 120)
+                  {
+                    mouse_on_terminal = true;
+                    TTY_SetCursor(tty,
+                                  std::max(0, std::min((mouse_x-4)/8, tty->width-1)),
+                                  std::max(0, std::min((mouse_y-4)/8, tty->height-1)));
+                  }
+                else // (mouse_y >= 120)
+                  {
+                    mouse_on_keyboard = true;
 
-                          case K_RETURN:
-                            {
-                              char line[256];
-                              int cx, cy;
-                              TTY_GetCursor(tty, &cx, &cy);
-                          
-                              for(int i = 0; i < tty->width; ++i)
-                                {
-                                  line[i] = TTY_GetChar(tty, i, cy);
-                                  line[i+1] = '\0';
-                                }
+                    int key = shifted ? matrix_shift[(mouse_x/20) + ((mouse_y - 120)/20) * 16] :
+                      matrix[(mouse_x/20) + ((mouse_y - 120)/20) * 16];
+                    //TTY_printf(tty, "Key: %s\n", SDL_GetKeyName(key));
+                    if (key < 256)
+                      {
+                        TTY_putchar(tty, (char)key);
+                      }
+                    else
+                      {
+                        switch(key)
+                          {
+                            case K_SHIFT:
+                              shifted = !shifted;
+                              break;
 
-                              TTY_putchar(tty, '\n');
+                            case K_RETURN:
+                              {
+                                char line[256];
+                                int cx, cy;
+                                TTY_GetCursor(tty, &cx, &cy);
 
-                              //TTY_printf(tty, "Line: '%s'\n", line);
-                              std::vector<std::string> tokens = tokenize(line, ' ');
-                              if (!tokens.empty())
-                                {
-                                  eval(tokens);
-                                  /*
-                                  if (tokens.front() == "cd")
-                                    {
-                                      if (tokens.size() == 2)
-                                        chdir(tokens[1].c_str());
-                                      else
-                                        TTY_print(tty, "Error: cd requires one directory argument");
-                                    }
-                                  else
-                                    {
-                                      Exec exec(tokens.front());
-                                        for(std::vector<std::string>::iterator i = tokens.begin()+1; i != tokens.end(); ++i)
-                                        {
-                                        exec.arg(*i);
-                                        }
+                                for(int i = 0; i < tty->width; ++i)
+                                  {
+                                    line[i] = TTY_GetChar(tty, i, cy);
+                                    line[i+1] = '\0';
+                                  }
 
-                                        exec.exec();
+                                TTY_putchar(tty, '\n');
 
-                                        TTY_print(tty, std::string(exec.get_stdout().begin(), exec.get_stdout().end()).c_str());
-                                        TTY_print(tty, std::string(exec.get_stderr().begin(), exec.get_stderr().end()).c_str());
-                                        }
-                                        }
-                                  */
-                                }
-                            }
-                            break;
+                                //TTY_printf(tty, "Line: '%s'\n", line);
+                                std::vector<std::string> tokens = tokenize(line, ' ');
+                                if (!tokens.empty())
+                                  {
+                                    eval(tty, tokens);
+                                  }
+                              }
+                              break;
 
-                          case K_BKSPC:
-                            {
-                              int cx, cy;
-                              TTY_GetCursor(tty, &cx, &cy);
-                              TTY_SetCursor(tty, cx-1, cy);
-                              TTY_putchar_nomove(tty, ' ');
-                            }
-                            break;
+                            case K_ESC:
+                              quit = true;
+                              TTY_print(tty, "Exiting\n");
+                              break;
 
-                          case K_LEFT:
-                            {
-                              int cx, cy;
-                              TTY_GetCursor(tty, &cx, &cy);
-                              TTY_SetCursor(tty, cx-1, cy);
-                            }
-                            break;
+                            case K_BKSPC:
+                              {
+                                int cx, cy;
+                                TTY_GetCursor(tty, &cx, &cy);
+                                TTY_SetCursor(tty, cx-1, cy);
+                                TTY_putchar_nomove(tty, ' ');
+                              }
+                              break;
 
-                          case K_RIGHT:
-                            {
-                              int cx, cy;
-                              TTY_GetCursor(tty, &cx, &cy);
-                              TTY_SetCursor(tty, cx+1, cy);
-                            }
-                            break;
+                            case K_LEFT:
+                              {
+                                int cx, cy;
+                                TTY_GetCursor(tty, &cx, &cy);
+                                TTY_SetCursor(tty, cx-1, cy);
+                              }
+                              break;
 
-                          case K_UP:
-                            {
-                              int cx, cy;
-                              TTY_GetCursor(tty, &cx, &cy);
-                              TTY_SetCursor(tty, cx, cy-1);
-                            }
-                            break;
+                            case K_RIGHT:
+                              {
+                                int cx, cy;
+                                TTY_GetCursor(tty, &cx, &cy);
+                                TTY_SetCursor(tty, cx+1, cy);
+                              }
+                              break;
 
-                          case K_DOWN:
-                            {
-                              int cx, cy;
-                              TTY_GetCursor(tty, &cx, &cy);
-                              TTY_SetCursor(tty, cx, cy+1);
-                            }
-                            break;
+                            case K_UP:
+                              {
+                                int cx, cy;
+                                TTY_GetCursor(tty, &cx, &cy);
+                                TTY_SetCursor(tty, cx, cy-1);
+                              }
+                              break;
 
-                          default:
-                            break;
-                        }
-                    }
-                }
+                            case K_DOWN:
+                              {
+                                int cx, cy;
+                                TTY_GetCursor(tty, &cx, &cy);
+                                TTY_SetCursor(tty, cx, cy+1);
+                              }
+                              break;
+
+                            default:
+                              break;
+                          }
+                      }
+                  }
                 break;
-                
+
               case SDL_MOUSEMOTION:
                 //TTY_printf(tty, "MouseMotion:          %dx%d\n", event.motion.x, event.motion.y);
                 mouse_x = event.motion.x;
                 mouse_y = event.motion.y;
+
+                if (mouse_on_terminal)
+                  {
+                    TTY_SetCursor(tty,
+                                  std::max(0, std::min((mouse_x-4)/8, tty->width-1)),
+                                  std::max(0, std::min((mouse_y-4)/8, tty->height-1)));
+                  }
+                break;
+
+
+              case SDL_JOYBUTTONDOWN:
+                switch (event.jbutton.button)
+                  {
+                    case WIZ_BTN_MENU:
+                      quit = true;
+                      break;
+
+                    case WIZ_BTN_L:
+                    case WIZ_BTN_R:
+                      shifted = !shifted;
+                      break;
+
+                    case WIZ_DPAD_LEFT:
+                      {
+                        int cx, cy;
+                        TTY_GetCursor(tty, &cx, &cy);
+                        TTY_SetCursor(tty, cx-1, cy);
+                      }
+                      break;
+
+                    case WIZ_DPAD_RIGHT:
+                      {
+                        int cx, cy;
+                        TTY_GetCursor(tty, &cx, &cy);
+                        TTY_SetCursor(tty, cx+1, cy);
+                      }
+
+                      break;
+
+                    case WIZ_DPAD_UP:
+                      {
+                        int cx, cy;
+                        TTY_GetCursor(tty, &cx, &cy);
+                        TTY_SetCursor(tty, cx, cy-1);
+                      }
+
+                      break;
+
+                    case WIZ_DPAD_DOWN:
+                      {
+                        int cx, cy;
+                        TTY_GetCursor(tty, &cx, &cy);
+                        TTY_SetCursor(tty, cx, cy+1);
+                      }
+                      break;
+
+                    default:
+                      break;
+                  }
+                break;
+
+              case SDL_JOYBUTTONUP:
                 break;
 
               default:
@@ -317,7 +472,7 @@ int main()
       TTY_Blit(tty, screen, 4, 4);
 
 
-      if (mouse_down && mouse_y > 120)
+      if (mouse_on_keyboard && mouse_y > 120)
         {
           SDL_Rect rect;
           rect.x = (mouse_x)/20 * 20;
@@ -335,6 +490,11 @@ int main()
 
   TTY_Free(tty);
   FNT_Free(font);
+
+#ifdef GP2X
+  //  chdir("/usr/gp2x");
+  //  execl("/usr/gp2x/gp2xmenu", "/usr/gp2x/gp2xmenu", NULL);
+#endif
 
   return 0;
 }
