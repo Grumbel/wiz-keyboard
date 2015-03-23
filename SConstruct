@@ -1,9 +1,12 @@
 # -*- python -*-
 
-env = Environment(CXXFLAGS=['-Wall', '-O2'],
-                  CPPPATH=['../SDL_tty'],
+import os
+
+env = Environment(ENV = os.environ,
+                  CXXFLAGS=['-Wall', '-O2'],
                   LIBS=['SDL_image'])
 env.ParseConfig("sdl-config --cflags --libs")
-env.Program('keyboard', ['keyboard.cpp', '../SDL_tty/libSDL_tty.a'])
+env.Append(LIBS='SDL_tty')
+env.Program('keyboard', ['keyboard.cpp'])
 
 # EOF #
