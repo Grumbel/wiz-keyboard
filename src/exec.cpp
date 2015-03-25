@@ -17,11 +17,14 @@
 */
 
 #include <errno.h>
-#include <stdexcept>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/types.h>
 #include <sstream>
+#include <stdexcept>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include "exec.hpp"
 
 const bool Exec::ABSOLUTE_PATH = true;
