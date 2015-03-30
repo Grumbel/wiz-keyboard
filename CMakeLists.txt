@@ -17,42 +17,24 @@
 cmake_minimum_required(VERSION 3.0)
 project(wiz-keyboard VERSION 0.0.0)
 
-include(FindSDL)
-include(FindSDL_image)
-
-if(!SDL_FOUND)
-  message(FATAL_ERROR "SDL is required")
-endif()
-
-if(!SDL_IMAGE_FOUND)
-  message(FATAL_ERROR "SDL_image is required")
-endif()
+find_package(SDL REQUIRED)
+find_package(SDL_image REQUIRED)
 
 include_directories(.)
 include_directories(src/)
 include_directories(external/SDL_tty/include)
 
-file(GLOB SDL_TTY_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+add_library(SDL_tty
   external/SDL_tty/src/SDL_fnt.c
-  external/SDL_tty/src/SDL_tty.c
-  )
-
-add_library(SDL_tty ${SDL_TTY_SOURCES})
+  external/SDL_tty/src/SDL_tty.c)
 target_link_libraries(SDL_tty ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES})
 target_include_directories(SDL_tty SYSTEM PUBLIC ${SDL_INCLUDE_DIR} ${SDL_IMAGE_INCLUDE_DIRS})
 
-file(GLOB CONSOLE_SOURCES_CXX RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-  src/console.cpp)
-
-add_executable(console ${CONSOLE_SOURCES_CXX})
+add_executable(console src/console.cpp)
 target_link_libraries(console ${SDL_LIBRARY} SDL_tty)
 target_include_directories(console SYSTEM PUBLIC ${SDL_INCLUDE_DIR})
 
-file(GLOB WIZ_KEYBOARD_SOURCES_CXX RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-  src/exec.cpp
-  src/keyboard.cpp)
-
-add_executable(wiz-keyboard ${WIZ_KEYBOARD_SOURCES_CXX})
+add_executable(wiz-keyboard src/exec.cpp src/keyboard.cpp)
 target_link_libraries(wiz-keyboard ${SDL_LIBRARY} SDL_tty)
 target_include_directories(wiz-keyboard SYSTEM PUBLIC ${SDL_INCLUDE_DIR})
 
