@@ -14,28 +14,48 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.19)
 project(wiz-keyboard VERSION 0.0.0)
+
+include(GNUInstallDirs)
 
 find_package(SDL REQUIRED)
 find_package(SDL_image REQUIRED)
 
-include_directories(.)
-include_directories(src/)
-include_directories(external/SDL_tty/include)
+function(build_dependencies)
+  set(BUILD_TESTS OFF)
 
-add_library(SDL_tty
-  external/SDL_tty/src/SDL_fnt.c
-  external/SDL_tty/src/SDL_tty.c)
-target_link_libraries(SDL_tty ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES})
-target_include_directories(SDL_tty SYSTEM PUBLIC ${SDL_INCLUDE_DIR} ${SDL_IMAGE_INCLUDE_DIRS})
+  find_package(SDL_tty REQUIRED)
+  if(NOT TARGET SDL_tty::SDL_tty)
+    add_subdirectory(external/SDL_tty/ EXCLUDE_FROM_ALL)
+  endif()
+endfunction()
+build_dependencies()
 
-add_executable(console src/console.cpp)
-target_link_libraries(console ${SDL_LIBRARY} SDL_tty)
-target_include_directories(console SYSTEM PUBLIC ${SDL_INCLUDE_DIR})
+add_executable(wiz-console src/console.cpp)
+target_compile_definitions(wiz-console PRIVATE
+  WIZKEYBOARD_DATADIR=\"${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}\")
+target_link_libraries(wiz-console PRIVATE
+  SDL_tty::SDL_tty
+  ${SDL_IMAGE_LIBRARIES}
+  SDL::SDL)
+target_include_directories(wiz-console PRIVATE
+  ${SDL_IMAGE_INCLUDE_DIRS})
 
 add_executable(wiz-keyboard src/exec.cpp src/keyboard.cpp)
-target_link_libraries(wiz-keyboard ${SDL_LIBRARY} SDL_tty)
-target_include_directories(wiz-keyboard SYSTEM PUBLIC ${SDL_INCLUDE_DIR})
+target_compile_definitions(wiz-keyboard PRIVATE
+  WIZKEYBOARD_DATADIR=\"${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}\")
+target_link_libraries(wiz-keyboard PRIVATE
+  SDL_tty::SDL_tty
+  ${SDL_IMAGE_LIBRARIES}
+  SDL::SDL)
+target_include_directories(wiz-keyboard PRIVATE
+  ${SDL_IMAGE_INCLUDE_DIRS})
+
+install(TARGETS wiz-keyboard wiz-console
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+
+install(DIRECTORY "data/"
+  DESTINATION "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}")
 
 # EOF #

@@ -97,7 +97,8 @@ tokenize(const std::string& str, char split_char)
 
 SDL_Surface* load_surface(const std::string& name)
 {
-  SDL_Surface* tmp = IMG_Load(name.c_str());
+  std::string const filename = std::string(WIZKEYBOARD_DATADIR) + "/" + name;
+  SDL_Surface* tmp = IMG_Load(filename.c_str());
   if (!tmp)
     {
       std::cout << "Error: " << SDL_GetError() << std::endl;
