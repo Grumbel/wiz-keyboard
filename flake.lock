@@ -1,0 +1,94 @@
+{
+  "nodes": {
+    "SDL_tty": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "tinycmmc": [
+          "tinycmmc"
+        ]
+      },
+      "locked": {
+        "lastModified": 1654000784,
+        "narHash": "sha256-ON99TAw1hth83LSYpNBAS6sg37u1qc173PZg9p3jB2k=",
+        "owner": "grumbel",
+        "repo": "SDL_tty",
+        "rev": "abca9d05c5b5a6ebd617bda02de375490e53be79",
+        "type": "github"
+      },
+      "original": {
+        "owner": "grumbel",
+        "repo": "SDL_tty",
+        "type": "github"
+      }
+    },
+    "flake-utils": {
+      "locked": {
+        "lastModified": 1653893745,
+        "narHash": "sha256-0jntwV3Z8//YwuOjzhV2sgJJPt+HY6KhU7VZUL0fKZQ=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "1ed9fb1935d260de5fe1c2f7ee0ebaae17ed2fa1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1653920503,
+        "narHash": "sha256-BBeCZwZImtjP3oYy4WogkQYy5OxNyfNciVSc1AfZgLQ=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "a634c8f6c1fbf9b9730e01764999666f3436f10a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-22.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "SDL_tty": "SDL_tty",
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs",
+        "tinycmmc": "tinycmmc"
+      }
+    },
+    "tinycmmc": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1654000716,
+        "narHash": "sha256-aCfXSXWVki7moiSR/oFaZRnRdO/5jhZbJ39jEI8fi5I=",
+        "owner": "grumbel",
+        "repo": "tinycmmc",
+        "rev": "22c77404937829f4b2da539c6c2e0e99545440e8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "grumbel",
+        "repo": "tinycmmc",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
