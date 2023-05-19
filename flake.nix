@@ -19,25 +19,31 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-       in rec {
-         packages = flake-utils.lib.flattenTree rec {
-           wiz-keyboard = pkgs.stdenv.mkDerivation {
-             name = "wiz-keyboard";
-             src = nixpkgs.lib.cleanSource ./.;
-             cmakeFlags = [];
-             nativeBuildInputs = [
-               pkgs.cmake
-               pkgs.pkgconfig
-               tinycmmc.defaultPackage.${system}
-             ];
-             buildInputs = [
-               SDL_tty.defaultPackage.${system}
+       in {
+         packages = rec {
+           default = wiz-keyboard;
 
-               pkgs.SDL
-               pkgs.SDL_image
+           wiz-keyboard = pkgs.stdenv.mkDerivation {
+             pname = "wiz-keyboard";
+             version = "0.0.0";
+
+             src = nixpkgs.lib.cleanSource ./.;
+
+             nativeBuildInputs = with pkgs; [
+               cmake
+               pkgconfig
+             ] ++ [
+               tinycmmc.packages.${system}.default
+             ];
+
+             buildInputs = with pkgs; [
+               SDL
+               SDL_image
+             ] ++ [
+               SDL_tty.packages.${system}.default
              ];
            };
         };
-        defaultPackage = packages.wiz-keyboard;
-      });
+       }
+    );
 }
